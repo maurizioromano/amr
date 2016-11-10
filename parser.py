@@ -111,9 +111,14 @@ def printAMR(verbo, listaArgomenti, indiceArgomenti, chiusura, soloArgomenti, so
 
 		for arg in listaArgomenti:
 			if(arg not in escludiArgomenti):
-				if(str(arg) == "amr-unknown"):
+				if(str(arg) == "LOCATIONamr-unknown" or str(arg) == "amr-unknown"):
+					arg = "amr-unknown"
 					amrVarList = updateAmrVarList(str(arg), amrVarList)
 					stringa = stringa + tabs + ":location (" + getPrintableAmrName(str(arg), amrVarList) + ")"
+				elif(str(arg) == "MANNERamr-unknown"):
+					arg = "amr-unknown"
+					amrVarList = updateAmrVarList(str(arg), amrVarList)
+					stringa = stringa + tabs + ":manner (" + getPrintableAmrName(str(arg), amrVarList) + ")"
 				elif(str(arg)[-6:] == "LOLKEK"):
 					arg = str(arg)[:-6]
 					amrVarList = updateAmrVarList(arg, amrVarList)
@@ -138,7 +143,7 @@ def printAMR(verbo, listaArgomenti, indiceArgomenti, chiusura, soloArgomenti, so
 	print(stringa)
 	return amrVarList
 
-def recArgs(m, args, argsCheckList, counter, bkp, mlist, firstPrint, mchecklist, tabs, amrVarList, polarityQres):
+def recArgs(m, args, argsCheckList, counter, bkp, mlist, firstPrint, mchecklist, tabs, amrVarList, polarityQres, mlistqres6That, qres6That):
 	a = []
 	countArgs = 0
 	for (x,argsOfOthersM) in args:
@@ -168,7 +173,7 @@ def recArgs(m, args, argsCheckList, counter, bkp, mlist, firstPrint, mchecklist,
 						mchecklist[mlist.index(str(x))] = "1"
 						escludiVerbi.append(bm)
 
-						mchecklist = recArgs(bm, bargs, bargsCheckList, 0, bkp, mlist, False, mchecklist, tabs+1, amrVarList, polarityQres)
+						mchecklist = recArgs(bm, bargs, bargsCheckList, 0, bkp, mlist, False, mchecklist, tabs+1, amrVarList, polarityQres, mlistqres6That, qres6That)
 			
 			#se ci sono degli argomenti in comune con altri verbi
 			
@@ -195,10 +200,17 @@ def recArgs(m, args, argsCheckList, counter, bkp, mlist, firstPrint, mchecklist,
 	
 	if(countArgs != 0):
 		for (x,y) in qres4:
+			
 			if(m == x):
 				truthValue = getName(y)
 				if(truthValue == "False"):
 					polarityFlag = True
+			elif(m in mlistqres6That):
+				for (mThat, that) in qres6That:
+					if(that == x and m == mThat):
+						truthValue = getName(y)
+						if(truthValue == "False"):
+							polarityFlag = True
 		amrVarList = printAMR(m, a, counter, True, True, False, False, tabs, amrVarList, polarityFlag, mchecklist[mlist.index(str(m))], False, 0, [])
 	return mchecklist
 	
@@ -222,6 +234,7 @@ bkp = []
 bkpqres6 = []
 mlistqres6 = []
 mchecklist = []
+mlistqres6That = []
 
 #guardo se ci sono delle coref
 qres2 = g.query(
@@ -261,8 +274,17 @@ qres6 = g.query(
 		  ?mainverb j.4:that ?that .
 		  ?that j.3:involves ?situationChild}
 		}""")
-	
 
+qres6That = g.query(
+	"""SELECT DISTINCT ?m ?that
+		WHERE {
+		  ?that j.2:involves ?m
+		}""")
+	
+for (m, that) in qres6That:
+	if(m not in mlistqres6That):
+		mlistqres6That.append(m)
+	
 for (m, situationChild) in qres6 :
 	if(m in mlistqres6):
 		(bm, bChildsList) = bkpqres6[mlistqres6.index(m)]
@@ -271,6 +293,8 @@ for (m, situationChild) in qres6 :
 	else:
 		mlistqres6.append(m)
 		bkpqres6.append((m, [situationChild]))
+		
+
 
 fakeMlist = []
 for (m, t, a, e, that, q, p, time) in qres : 
@@ -297,18 +321,21 @@ for (m, t, a, e, that, q, p, time) in qres :
 				for (xx, yy) in qres2:
 					if(x == yy):
 						x = xx	
-				if(getName(str(x)) == "thing_1" and str(that) != "None"):
-					(bm, bChildsList) = bkpqres6[mlistqres6.index(m)]
-					inqres5 = False
-					for situationChild in bChildsList:
-						for (m5, arg5) in qres5:
-							if(situationChild == m5):
-								x = m5
-								inqres5 = True
-							if(situationChild == arg5):
-								inqres5 = True
-						if(not inqres5):
-							x = situationChild
+				if(getName(str(x)) == "thing_1"):
+					if(str(that) != "None"):
+						(bm, bChildsList) = bkpqres6[mlistqres6.index(m)]
+						inqres5 = False
+						for situationChild in bChildsList:
+							for (m5, arg5) in qres5:
+								if(situationChild == m5):
+									x = m5
+									inqres5 = True
+								if(situationChild == arg5):
+									inqres5 = True
+							if(not inqres5):
+								x = situationChild
+					else:
+						x = "A#amr-unknown"
 				args.append((x, []))
 				argsCheckList.append(False)
 				
@@ -336,8 +363,11 @@ for (m, t, a, e, that, q, p, time) in qres :
 				
 		if(str(q) != "None"):
 			nomeQ = getName(str(q))
-			if(nomeQ[:-2] == "location" or nomeQ[:-2] == "manner"):
-				args.append(("amr-unknown", []))
+			if(nomeQ[:-2] == "location"):
+				args.append(("LOCATIONamr-unknown", []))
+				argsCheckList.append(False)
+			elif(nomeQ[:-2] == "manner"):
+				args.append(("MANNERamr-unknown", []))
 				argsCheckList.append(False)
 		mlist.append(str(m))			
 		bkp.append((m,args,argsCheckList))
@@ -399,7 +429,7 @@ for (m, args, argsCheckList) in bkp :
 		#print("MAINVERB:%s\nTHEME:%s\nAGENT:%s\nEXPERIENCER:%s" %(m, t, a, e))
 
 		if(mchecklist[counter] != "1"): #se non e' ancora stata fatta
-			mchecklist = recArgs(m, args, argsCheckList, 0, bkp, mlist, True, mchecklist, 0, [], qres4)
+			mchecklist = recArgs(m, args, argsCheckList, 0, bkp, mlist, True, mchecklist, 0, [], qres4, mlistqres6That, qres6That)
 		mchecklist[counter] = "1"
 		counter = counter + 1
 
