@@ -326,7 +326,7 @@ for (m, t, a, e, that, q, p, time) in qres :
 						(bm, bChildsList) = bkpqres6[mlistqres6.index(m)]
 						inqres5 = False
 						for situationChild in bChildsList:
-							for (m5, arg5) in qres5:
+							for (m5, arg5, th) in qres5:
 								if(situationChild == m5):
 									x = m5
 									inqres5 = True
@@ -424,10 +424,15 @@ for (m, arg, th) in qres5:
 
 counter = 0
 
+bkpbkp = []
+for (m, args, argsCheckList) in bkp : 
+	bkpbkp.append((m, list(reversed(args)), list(reversed(argsCheckList))))
+		
+bkp = bkpbkp
 
 for (m, args, argsCheckList) in bkp : 
 		#print("MAINVERB:%s\nTHEME:%s\nAGENT:%s\nEXPERIENCER:%s" %(m, t, a, e))
-
+		
 		if(mchecklist[counter] != "1"): #se non e' ancora stata fatta
 			mchecklist = recArgs(m, args, argsCheckList, 0, bkp, mlist, True, mchecklist, 0, [], qres4, mlistqres6That, qres6That)
 		mchecklist[counter] = "1"
