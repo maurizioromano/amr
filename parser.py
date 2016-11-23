@@ -216,7 +216,7 @@ def recArgs(m, args, argsCheckList, counter, bkp, mlist, firstPrint, mchecklist,
 	
 #ricerco i mainverb ed i loro argomenti (rule1 + rule2)
 qres = g.query(
-	"""SELECT DISTINCT ?mainverb ?j_1 ?j_2 ?j_3 ?that ?question ?j_4 ?j_5
+	"""SELECT DISTINCT ?mainverb ?j_1 ?j_2 ?j_3 ?that ?question ?j_4 ?j_5 ?with
 		WHERE {
 		  ?mainverb a ?verb . 
 		  ?verb rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event> .
@@ -226,7 +226,8 @@ qres = g.query(
 		  OPTIONAL{?mainverb j.4:that ?that} .
 		  OPTIONAL{?mainverb j.2:associatedWith ?question} .
 		  OPTIONAL{?mainverb j.0:Patient ?j_4} .
-		  OPTIONAL{?mainverb j.0:Source ?j_5}
+		  OPTIONAL{?mainverb j.0:Source ?j_5} .
+		  OPTIONAL{?mainverb j.3:with ?with}
 		}""")
 
 mlist = []
@@ -297,11 +298,11 @@ for (m, situationChild) in qres6 :
 
 
 fakeMlist = []
-for (m, t, a, e, that, q, p, time) in qres : 
+for (m, t, a, e, that, q, p, time, withh) in qres : 
 	fakeMlist.append(m)
 	
 
-for (m, t, a, e, that, q, p, time) in qres : 
+for (m, t, a, e, that, q, p, time, withh) in qres : 
 		for (x,y) in qres3:
 			if(m == x):
 				modality = getName(y)
@@ -369,13 +370,54 @@ for (m, t, a, e, that, q, p, time) in qres :
 			elif(nomeQ[:-2] == "manner"):
 				args.append(("MANNERamr-unknown", []))
 				argsCheckList.append(False)
+		
+		possType = "0"
+		
+		if(str(withh) != "None"):
+			name = getName(str(withh))
+			if(name[-2:-1] == "_"):
+				realName = name[:-2]
+			else:
+				realName = name
+				
+			
+			qres7 = g2.query(
+			"""SELECT DISTINCT ?x ?y ?z ?others ?k ?x1 ?y1 ?z1 ?others1 ?k1
+				WHERE {
+				  OPTIONAL{?x j.3:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#male_1>} .
+				  OPTIONAL{?y j.3:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#female_1>} .
+				  OPTIONAL{?z j.3:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#neuter_1>} .
+				  OPTIONAL{?others j.2:""" + realName + """Of ?k} .
+				  OPTIONAL{?x1 j.2:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#male_1>} .
+				  OPTIONAL{?y1 j.2:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#female_1>} .
+				  OPTIONAL{?z1 j.2:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#neuter_1>} .
+				  OPTIONAL{?others1 j.3:""" + realName + """Of ?k1}
+				}""")
+
+			
+			for (xx, yy, zz, others, k, xx1, yy1, zz1, others1, k1) in qres7:
+				if((str(xx) == str(withh)) or (str(xx1) == str(withh))):
+					possType = "-1"
+				elif((str(yy) == str(withh)) or (str(yy1) == str(withh))):
+					possType = "-2"
+				elif((str(zz) == str(withh)) or (str(zz1) == str(withh))):
+					possType = "-3"
+				elif(str(others) == str(withh)):
+					possType = str(k)
+				elif(str(others1) == str(withh)):
+					possType = str(k1)
+			
+			mlist.append(str(name))			
+			bkp.append((name, [], []))
+			mchecklist.append(possType)
+			possType = "0"
 		mlist.append(str(m))			
 		bkp.append((m,args,argsCheckList))
-		mchecklist.append("0")
+		mchecklist.append(possType)
 
 		
 for (m, arg, th) in qres5:
-
+	mNone = False
 	if(getName(str(m)) == "Topic"):
 		lll = m
 		m = arg
@@ -397,39 +439,45 @@ for (m, arg, th) in qres5:
 		realName = name[:-2]
 	else:
 		realName = name
-	
+		
 	qres7 = g2.query(
-	"""SELECT DISTINCT ?x ?y ?z ?others ?k
+	"""SELECT DISTINCT ?x ?y ?z ?others ?k ?x1 ?y1 ?z1 ?others1 ?k1
 		WHERE {
 		  OPTIONAL{?x j.3:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#male_1>} .
 		  OPTIONAL{?y j.3:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#female_1>} .
 		  OPTIONAL{?z j.3:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#neuter_1>} .
-		  OPTIONAL{?others j.2:""" + realName + """Of ?k}
+		  OPTIONAL{?others j.2:""" + realName + """Of ?k} .
+		  OPTIONAL{?x1 j.2:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#male_1>} .
+		  OPTIONAL{?y1 j.2:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#female_1>} .
+		  OPTIONAL{?z1 j.2:""" + realName + """Of <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#neuter_1>} .
+		  OPTIONAL{?others1 j.3:""" + realName + """Of ?k1}
 		}""")
 	
 	possType = "0"
-	for (xx, yy, zz, others, k) in qres7:
-		if(str(xx) == str(m)):
+	for (xx, yy, zz, others, k, xx1, yy1, zz1, others1, k1) in qres7:
+		if((str(xx) == str(m)) or (str(xx1) == str(m))):
 			possType = "-1"
-		elif(str(yy) == str(m)):
+		elif((str(yy) == str(m)) or (str(yy1) == str(m))):
 			possType = "-2"
-		elif(str(zz) == str(m)):
+		elif((str(zz) == str(m)) or (str(zz1) == str(m))):
 			possType = "-3"
 		elif(str(others) == str(m)):
 			possType = str(k)
+		elif(str(others1) == str(m)):
+			possType = str(k1)
 	if(possType != "0"):
 		mchecklist.append(possType)
 	else:
 		mchecklist.append("0")
 
 counter = 0
-
+'''
 bkpbkp = []
 for (m, args, argsCheckList) in bkp : 
 	bkpbkp.append((m, list(reversed(args)), list(reversed(argsCheckList))))
 		
 bkp = bkpbkp
-
+'''
 for (m, args, argsCheckList) in bkp : 
 		#print("MAINVERB:%s\nTHEME:%s\nAGENT:%s\nEXPERIENCER:%s" %(m, t, a, e))
 		
